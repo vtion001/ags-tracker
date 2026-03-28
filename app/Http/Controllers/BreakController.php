@@ -101,11 +101,28 @@ class BreakController extends Controller
             $breaks = collect([]);
         }
 
-        return response()->json([
+        // Performance metrics
+        $data = [
             'breaks' => $breaks,
             'profile' => $user,
             'stats' => $stats,
-        ]);
+            'performance' => [
+                'compliance' => $user->getComplianceRate(),
+                'daily_breaks' => $user->getDailyBreaks(),
+                'avg_15m' => $user->getAverageDuration('15m'),
+                'avg_60m' => $user->getAverageDuration('60m'),
+                'score' => $user->getPerformanceScore(),
+                'weekly_total' => $user->getWeeklyStats()['total'],
+                'weekly_overbreaks' => $user->getWeeklyStats()['overbreaks'],
+            ],
+        ];
+
+        // Peer stats (only for non-admins)
+        if (!$user->isAdmin()) {
+            $data['peer_stats'] = $this->breakService->getPeerStats($user);
+        }
+
+        return response()->json($data);
     }
 
     public function history(Request $request): \Illuminate\Http\JsonResponse

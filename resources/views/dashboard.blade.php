@@ -2099,6 +2099,77 @@
                 }
             }
 
+            // Update performance metrics if available
+            if (data.performance) {
+                const complianceEl = document.getElementById('performance-compliance-value');
+                if (complianceEl) complianceEl.textContent = Math.round(data.performance.compliance);
+
+                const scoreEl = document.getElementById('performance-score-value');
+                if (scoreEl) scoreEl.textContent = Math.round(data.performance.score);
+
+                const dailyBreaksEl = document.getElementById('performance-daily-breaks');
+                if (dailyBreaksEl) dailyBreaksEl.textContent = data.performance.daily_breaks;
+
+                const weeklyTotalEl = document.getElementById('performance-weekly-total');
+                if (weeklyTotalEl) weeklyTotalEl.textContent = data.performance.weekly_total;
+
+                const avg15mEl = document.getElementById('performance-avg-15m');
+                if (avg15mEl) avg15mEl.textContent = parseFloat(data.performance.avg_15m).toFixed(1);
+
+                const avg60mEl = document.getElementById('performance-avg-60m');
+                if (avg60mEl) avg60mEl.textContent = parseFloat(data.performance.avg_60m).toFixed(1);
+
+                // Update compliance ring
+                const ringCircle = document.getElementById('compliance-ring-circle');
+                if (ringCircle) {
+                    const circumference = 157;
+                    const offset = circumference - (data.performance.compliance / 100) * circumference;
+                    ringCircle.setAttribute('style', 'stroke-dashoffset: ' + offset);
+                }
+            }
+
+            // Update peer stats if available
+            if (data.peer_stats) {
+                const my15mEl = document.getElementById('peer-my-15m');
+                if (my15mEl) my15mEl.textContent = data.peer_stats.my.count_15m;
+
+                const teamAvg15mEl = document.getElementById('peer-team-avg-15m');
+                if (teamAvg15mEl) teamAvg15mEl.textContent = data.peer_stats.team.count_15m;
+
+                const deptAvg15mEl = document.getElementById('peer-dept-avg-15m');
+                if (deptAvg15mEl) deptAvg15mEl.textContent = data.peer_stats.department.count_15m;
+
+                const my60mEl = document.getElementById('peer-my-60m');
+                if (my60mEl) my60mEl.textContent = data.peer_stats.my.count_60m;
+
+                const teamAvg60mEl = document.getElementById('peer-team-avg-60m');
+                if (teamAvg60mEl) teamAvg60mEl.textContent = data.peer_stats.team.count_60m;
+
+                const deptAvg60mEl = document.getElementById('peer-dept-avg-60m');
+                if (deptAvg60mEl) deptAvg60mEl.textContent = data.peer_stats.department.count_60m;
+
+                const myOverbreaksEl = document.getElementById('peer-my-overbreaks');
+                if (myOverbreaksEl) myOverbreaksEl.textContent = data.peer_stats.my.overbreaks;
+
+                const teamAvgOverbreaksEl = document.getElementById('peer-team-avg-overbreaks');
+                if (teamAvgOverbreaksEl) teamAvgOverbreaksEl.textContent = data.peer_stats.team.overbreaks;
+
+                const deptAvgOverbreaksEl = document.getElementById('peer-dept-avg-overbreaks');
+                if (deptAvgOverbreaksEl) deptAvgOverbreaksEl.textContent = data.peer_stats.department.overbreaks;
+
+                const myComplianceEl = document.getElementById('peer-my-compliance');
+                if (myComplianceEl) myComplianceEl.textContent = data.peer_stats.my.compliance;
+
+                const teamAvgComplianceEl = document.getElementById('peer-team-avg-compliance');
+                if (teamAvgComplianceEl) teamAvgComplianceEl.textContent = data.peer_stats.team.compliance;
+
+                const deptAvgComplianceEl = document.getElementById('peer-dept-avg-compliance');
+                if (deptAvgComplianceEl) deptAvgComplianceEl.textContent = data.peer_stats.department.compliance;
+
+                const rankBadgeEl = document.getElementById('peer-rank-badge');
+                if (rankBadgeEl) rankBadgeEl.textContent = data.peer_stats.team_percentile_rank;
+            }
+
             // Update team overbreak alert for TL/Admin
             if (data.breaks && data.breaks.length > 0) {
                 const now = new Date();
