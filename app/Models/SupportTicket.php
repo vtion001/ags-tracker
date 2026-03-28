@@ -50,6 +50,29 @@ class SupportTicket extends Model
         return $this->status === self::STATUS_OPEN;
     }
 
+    public function getCategoryLabel(): string
+    {
+        return match($this->category) {
+            self::CATEGORY_BUG => 'Bug/Error',
+            self::CATEGORY_FEATURE => 'Feature Request',
+            self::CATEGORY_SCHEDULE => 'Schedule Issue',
+            self::CATEGORY_ACCESS => 'Access Problem',
+            self::CATEGORY_OTHER => 'Other',
+            default => ucfirst($this->category),
+        };
+    }
+
+    public function getStatusLabel(): string
+    {
+        return match($this->status) {
+            self::STATUS_OPEN => 'Open',
+            self::STATUS_IN_PROGRESS => 'In Progress',
+            self::STATUS_RESOLVED => 'Resolved',
+            self::STATUS_CLOSED => 'Closed',
+            default => ucfirst($this->status),
+        };
+    }
+
     public function scopeForUser($query, User $user)
     {
         if ($user->isAdmin()) {
