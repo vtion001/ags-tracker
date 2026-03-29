@@ -1,9 +1,17 @@
 <x-app-layout>
-<div class="page-content">
-    <!-- Header -->
-    <div class="page-header">
-        <h1 class="page-title">Ticket Management</h1>
-    </div>
+<div class="app-layout">
+    @include('components.sidebar')
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Ticket Management</h1>
+            </div>
+        </header>
+        <div class="page-content">
+            <!-- Header -->
+            <div class="page-header">
+                <h1 class="page-title">Ticket Management</h1>
+            </div>
 
     <!-- Stats Cards Row -->
     <div class="stats-cards-row" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
@@ -154,6 +162,6 @@
             </div>
             @endif
         </div>
-    </div>
+    </main>
 </div>
 </x-app-layout>
