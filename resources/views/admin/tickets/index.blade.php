@@ -1,6 +1,4 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="page-content">
     <!-- Header -->
     <div class="page-header">
@@ -158,4 +156,3 @@
         </div>
     </div>
 </div>
-@endsection
