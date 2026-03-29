@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminTicketController;
 use App\Http\Controllers\AlertController;
 use App\Http\Controllers\BreakController;
 use App\Http\Controllers\DevLoginController;
@@ -61,6 +62,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Admin Ticket Routes — admin and team_lead only
+    Route::middleware(['auth', 'admin.or.teamlead'])->prefix('admin')->group(function () {
+        Route::get('/tickets', [AdminTicketController::class, 'index'])->name('admin.tickets.index');
+        Route::get('/tickets/{id}', [AdminTicketController::class, 'show'])->name('admin.tickets.show');
+        Route::post('/tickets/{id}/comment', [AdminTicketController::class, 'addComment'])->name('admin.tickets.comment');
+        Route::post('/tickets/{id}/status', [AdminTicketController::class, 'updateStatus'])->name('admin.tickets.status');
+        Route::post('/tickets/{id}/priority', [AdminTicketController::class, 'updatePriority'])->name('admin.tickets.priority');
+    });
 
     // Support Tickets
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');

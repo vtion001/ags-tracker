@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreTicketRequest;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketComment;
+use App\Notifications\NewTicketCreated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
 
 class TicketController extends Controller
@@ -31,7 +33,7 @@ class TicketController extends Controller
 
     public function store(StoreTicketRequest $request): \Illuminate\Http\RedirectResponse
     {
-        SupportTicket::create([
+        $ticket = SupportTicket::create([
             'user_id' => Auth::id(),
             'subject' => $request->input('subject'),
             'category' => $request->input('category'),
@@ -39,6 +41,14 @@ class TicketController extends Controller
             'description' => $request->input('description'),
             'status' => SupportTicket::STATUS_OPEN,
         ]);
+
+        // Get team lead email for notification
+        $agent = Auth::user();
+        $teamLeadEmail = $agent->tl_email ?? config('mail.admin_address', 'admin@allianceglobalsolutions.com');
+        $teamLeadName = $agent->manager_name ?? 'Team Lead';
+
+        Notification::route('mail', $teamLeadEmail)
+            ->notify(new NewTicketCreated($ticket, $agent, $teamLeadName, $teamLeadEmail));
 
         return redirect()->route('tickets.index')
             ->with('success', 'Ticket submitted successfully.');
