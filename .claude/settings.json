@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": ["Edit", "Write", "Bash", "Glob", "Grep", "Read", "LS", "Agent"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*\\.env.*",
+        "name": "BlockEnvEdits",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Blocked: .env files contain secrets and should be edited manually' && exit 1"
+          }
+        ]
+      },
+      {
+        "matcher": ".*\\.env\\.example.*",
+        "name": "BlockEnvExampleEdits",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Blocked: .env.example should only be edited directly when adding new variables' && exit 1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*\\.php$",
+        "name": "AutoFormatPHP",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd laravel && ./vendor/bin/pint {path}",
+            "if": "tool in [Edit, Write]"
+          }
+        ]
+      }
+    ]
+  }
+}
