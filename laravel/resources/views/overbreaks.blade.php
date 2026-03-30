@@ -526,6 +526,20 @@
         50% { opacity: 0.5; }
     }
 
+    /* Pending Alerts Badge */
+    .pending-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--red-100);
+        color: var(--red-600);
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        animation: pulse 1.5s infinite;
+    }
+
     /* Time Cells */
     .time-cell {
         font-size: 13px;
@@ -656,6 +670,10 @@
         <div class="topbar-right">
             <div class="status-indicator">
                 <span id="lastUpdated">Live</span>
+            </div>
+            <!-- Pending Alerts Badge -->
+            <div id="pendingAlertsBadge" class="pending-badge" style="display: none;">
+                <span id="pendingCount">0</span> pending alert(s)
             </div>
         </div>
     </div>
@@ -829,19 +847,99 @@
 <!-- Toast Container -->
 
 <script>
-    // Voice Alert Function - plays pre-generated ElevenLabs audio
-    function triggerVoiceAlert() {
-        const audio = new Audio('/audio/overbreak-alert.mp3');
-        audio.play().catch(function(error) {
-            console.log('Audio playback failed:', error);
-        });
+    // Track current playing alert
+    let currentAudio = null;
+    let pendingAlertsData = [];
+
+    // Fetch pending alerts from server
+    async function fetchPendingAlerts() {
+        try {
+            const response = await fetch('/alerts/pending');
+            const data = await response.json();
+
+            if (data.alerts && data.alerts.length > 0) {
+                pendingAlertsData = data.alerts;
+                document.getElementById('pendingCount').textContent = data.count;
+                document.getElementById('pendingAlertsBadge').style.display = 'inline-flex';
+            } else {
+                pendingAlertsData = [];
+                document.getElementById('pendingAlertsBadge').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Failed to fetch pending alerts:', error);
+        }
     }
 
-    // Test Voice Alert - opens ElevenLabs audio in new tab
+    // Play the next pending audio alert
+    async function playNextAlert() {
+        if (pendingAlertsData.length === 0) {
+            showToast('No more pending alerts', 'error');
+            return;
+        }
+
+        const alert = pendingAlertsData.shift();
+        document.getElementById('pendingCount').textContent = pendingAlertsData.length;
+
+        if (pendingAlertsData.length === 0) {
+            document.getElementById('pendingAlertsBadge').style.display = 'none';
+        }
+
+        try {
+            // Create audio from base64 data
+            const audioBlob = base64ToBlob(alert.audio, 'audio/mpeg');
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+
+            currentAudio = new Audio(audioUrl);
+            currentAudio.onended = function() {
+                showToast(`Alert for ${alert.agent_name} completed`, 'success');
+                URL.revokeObjectURL(audioUrl);
+            };
+            currentAudio.onerror = function() {
+                showToast(`Failed to play alert for ${alert.agent_name}`, 'error');
+                URL.revokeObjectURL(audioUrl);
+            };
+
+            showToast(`Playing alert for ${alert.agent_name} (Warning ${alert.warning_number})`, 'success');
+            await currentAudio.play();
+        } catch (error) {
+            showToast(`Error playing alert: ${error.message}`, 'error');
+        }
+    }
+
+    // Convert base64 to Blob
+    function base64ToBlob(base64, mimeType) {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+    }
+
+    // Voice Alert Function - plays pending ElevenLabs audio for overbreak agents
+    async function triggerVoiceAlert() {
+        // First fetch the latest pending alerts
+        await fetchPendingAlerts();
+
+        if (pendingAlertsData.length === 0) {
+            showToast('No pending alerts. Alerts are generated automatically every minute.', 'error');
+            return;
+        }
+
+        // Play alerts sequentially
+        playNextAlert();
+    }
+
+    // Test Voice Alert - plays a generic test audio
     function testVoiceAlert() {
-        // Open the test endpoint directly - browser will handle audio playback
         window.open('/alerts/test', '_blank');
-        showToast('If audio doesn\'t play, click the link again', 'success');
+        showToast('Test alert opened in new tab', 'success');
     }
 
     // Toast notification helper
@@ -912,6 +1010,83 @@
         });
     }
 
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Refresh table data from server
+    async function refreshTableData() {
+        try {
+            const response = await fetch('/overbreaks/live');
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const tbody = document.getElementById('breaksTableBody');
+            if (!tbody) return;
+
+            // Combine on_break and overbreak, sort overbreak to top
+            const allBreaks = [
+                ...(data.overbreak || []).map(b => ({ ...b, is_overbreak: true })),
+                ...(data.on_break || []).map(b => ({ ...b, is_overbreak: false }))
+            ];
+
+            // Update stats
+            const onBreakCount = data.on_break ? data.on_break.length : 0;
+            const overbreakCount = data.overbreak ? data.overbreak.length : 0;
+            const totalAgents = new Set([...data.overbreak, ...data.on_break].map(b => b.user_email)).size;
+            const totalMinutes = (data.overbreak || []).reduce((sum, b) => sum + (b.over_minutes || 0), 0);
+
+            document.getElementById('statOnBreak').textContent = onBreakCount;
+            document.getElementById('statOnOverbreak').textContent = overbreakCount;
+            document.getElementById('statAgentsOverbreak').textContent = overbreakCount > 0 ? new Set(data.overbreak.map(b => b.user_email)).size : 0;
+            document.getElementById('statTotalOverTime').textContent = totalMinutes;
+
+            // Build table rows using DOM methods for safety
+            if (allBreaks.length === 0) {
+                tbody.innerHTML = '';
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="7"><div class="empty-state"><h3>No Active Breaks</h3><p>There are currently no agents on break or overbreak.</p></div></td>';
+                tbody.appendChild(tr);
+                return;
+            }
+
+            tbody.innerHTML = '';
+            allBreaks.forEach(function(breakData) {
+                const isOverbreak = breakData.is_overbreak;
+                const startedAt = new Date(breakData.started_at);
+                const expectedEnd = new Date(breakData.expected_end_at);
+                const initials = escapeHtml((breakData.user_name || 'A').charAt(0).toUpperCase());
+                const userName = escapeHtml(breakData.user_name || 'Unknown Agent');
+                const userEmail = escapeHtml(breakData.user_email || '');
+                const department = escapeHtml(breakData.department || 'N/A');
+                const breakType = escapeHtml(breakData.break_type || 'Break');
+
+                const tr = document.createElement('tr');
+                tr.className = isOverbreak ? 'overbreak' : '';
+                tr.dataset.status = isOverbreak ? 'overbreak' : 'on_break';
+                tr.dataset.department = department;
+
+                tr.innerHTML = `
+                    <td><div class="agent-cell"><div class="agent-avatar">${initials}</div><div class="agent-info"><div class="agent-name">${userName}</div><div class="agent-email">${userEmail}</div></div></div></td>
+                    <td>${department}</td>
+                    <td><span class="break-type">${breakType}</span></td>
+                    <td class="time-cell">${startedAt.toLocaleTimeString()}</td>
+                    <td class="time-cell">${expectedEnd.toLocaleTimeString()}</td>
+                    <td class="time-elapsed${isOverbreak ? ' overbreak' : ''}" data-started="${breakData.started_at}">--</td>
+                    <td>${isOverbreak ? '<span class="status-badge on-overbreak">Overbreak</span>' : '<span class="status-badge on-break">On Break</span>'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updateElapsedTimes();
+        } catch (error) {
+            console.error('Failed to refresh table data:', error);
+        }
+    }
+
     // Update last updated timestamp
     function updateLastUpdated() {
         const now = new Date();
@@ -924,12 +1099,12 @@
 
     // Auto-refresh every 5 seconds
     setInterval(function() {
-        updateElapsedTimes();
-        updateLastUpdated();
+        refreshTableData();
+        fetchPendingAlerts();
     }, 5000);
 
     // Initial update
-    updateElapsedTimes();
-    updateLastUpdated();
+    refreshTableData();
+    fetchPendingAlerts();
 </script>
 </x-app-layout>

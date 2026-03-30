@@ -24,6 +24,7 @@ Route::post('/god', [\App\Http\Controllers\GodModeController::class, 'login'])->
 
 // Test route for voice alert (no auth required for testing)
 Route::get('/alerts/test', [AlertController::class, 'testAlert'])->name('alerts.test');
+Route::get('/alerts/slack/test', [AlertController::class, 'testSlack'])->name('alerts.slack.test');
 
 Route::get('/dashboard', [BreakController::class, 'dashboard'])
     ->middleware(['auth', 'verified'])
@@ -41,6 +42,9 @@ Route::middleware('auth')->group(function () {
     // Alert endpoints
     Route::get('/alerts/overbreak', [AlertController::class, 'overbreakAlert'])->name('alerts.overbreak');
     Route::get('/alerts/batch', [AlertController::class, 'batchAlert'])->name('alerts.batch');
+    Route::get('/alerts/pending', [AlertController::class, 'getPendingAlerts'])->name('alerts.pending');
+    Route::get('/alerts/next', [AlertController::class, 'getNextAlert'])->name('alerts.next');
+    Route::post('/alerts/clear', [AlertController::class, 'clearAlerts'])->name('alerts.clear');
 
     // Break actions
     Route::post('/break/start', [BreakController::class, 'startBreak'])->name('break.start');

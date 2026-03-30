@@ -209,6 +209,41 @@
         height: 18px;
     }
 
+    /* Slack Button */
+    .btn-slack {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: #4a154b;
+        color: var(--white);
+        border: none;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .btn-slack:hover {
+        background: #611f69;
+        transform: translateY(-1px);
+    }
+
+    .btn-slack:active {
+        transform: translateY(0);
+    }
+
+    .btn-slack:disabled {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    .btn-slack svg {
+        width: 18px;
+        height: 18px;
+    }
+
     /* Stats Grid */
     .stats-grid {
         display: grid;
@@ -673,6 +708,12 @@
                     </svg>
                     Test Voice Alert
                 </button>
+                <button type="button" class="btn-slack" id="testSlackBtn" onclick="testSlackAlert()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </svg>
+                    Test Slack
+                </button>
                 <button type="button" class="btn-voice-alert" onclick="triggerVoiceAlert()">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
@@ -829,19 +870,221 @@
 <!-- Toast Container -->
 
 <script>
-    // Voice Alert Function - plays pre-generated ElevenLabs audio
+    // Auto-play pending alerts when page loads
+    let pendingAlertCount = 0;
+    let isPlayingAlerts = false;
+
+    function checkAndPlayPendingAlerts() {
+        fetch('/alerts/pending')
+            .then(function(response) {
+                if (!response.ok) return null;
+                return response.json();
+            })
+            .then(function(data) {
+                if (data && data.alerts && data.alerts.length > 0) {
+                    pendingAlertCount = data.count;
+                    showToast('Auto-playing ' + data.count + ' voice alert(s)...', 'success');
+                    playNextPendingAlert();
+                }
+            })
+            .catch(function(error) {
+                console.log('No pending alerts:', error);
+            });
+    }
+
+    function playNextPendingAlert() {
+        if (isPlayingAlerts) return;
+
+        fetch('/alerts/next')
+            .then(function(response) {
+                if (response.status === 404) {
+                    isPlayingAlerts = false;
+                    pendingAlertCount = 0;
+                    showToast('All voice alerts played', 'success');
+                    return null;
+                }
+                if (!response.ok) throw new Error('Failed to fetch alert');
+                return response.blob();
+            })
+            .then(function(blob) {
+                if (!blob) return;
+
+                isPlayingAlerts = true;
+
+                const agentName = 'Agent'; // Could extract from response headers
+                const audioUrl = URL.createObjectURL(blob);
+                const audio = new Audio(audioUrl);
+
+                audio.addEventListener('ended', function() {
+                    URL.revokeObjectURL(audioUrl);
+                    pendingAlertCount--;
+
+                    if (pendingAlertCount > 0) {
+                        showToast(pendingAlertCount + ' alert(s) remaining...', 'success');
+                        // Play next with small delay
+                        setTimeout(playNextPendingAlert, 1500);
+                    } else {
+                        isPlayingAlerts = false;
+                        showToast('All overbreak alerts played', 'success');
+                    }
+                });
+
+                audio.addEventListener('error', function() {
+                    URL.revokeObjectURL(audioUrl);
+                    isPlayingAlerts = false;
+                    console.log('Audio playback error');
+                });
+
+                audio.play().catch(function(error) {
+                    console.log('Audio play failed:', error);
+                    isPlayingAlerts = false;
+                });
+
+                showToast('Playing overbreak warning...', 'success');
+            })
+            .catch(function(error) {
+                console.log('Error playing alerts:', error);
+                isPlayingAlerts = false;
+            });
+    }
+
+    // Voice Alert Function - fetches audio from batch endpoint and plays in background
     function triggerVoiceAlert() {
-        const audio = new Audio('/audio/overbreak-alert.mp3');
-        audio.play().catch(function(error) {
-            console.log('Audio playback failed:', error);
+        // Collect all overbreak agents from the table
+        const overbreakRows = document.querySelectorAll('#breaksTableBody tr.overbreak');
+        const agents = [];
+
+        overbreakRows.forEach(function(row) {
+            const agentNameEl = row.querySelector('.agent-name');
+            const elapsedEl = row.querySelector('.time-elapsed');
+            if (agentNameEl) {
+                agents.push({
+                    user_name: agentNameEl.textContent.trim(),
+                    over_minutes: elapsedEl ? parseInt(elapsedEl.textContent) || 0 : 0
+                });
+            }
+        });
+
+        if (agents.length === 0) {
+            showToast('No overbreak agents to alert', 'error');
+            return;
+        }
+
+        // Disable button and show loading state
+        const btn = document.querySelector('.btn-voice-alert');
+        btn.disabled = true;
+        const btnText = btn.querySelector('svg').nextSibling;
+        const originalText = btnText.textContent;
+        btnText.textContent = ' Playing...';
+
+        // Call batch alert endpoint
+        fetch('/alerts/batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ agents: agents })
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Alert failed');
+            }
+            return response.blob();
+        })
+        .then(function(blob) {
+            // Play audio in background
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            audio.play().catch(function(error) {
+                console.log('Audio playback failed:', error);
+                showToast('Audio playback failed', 'error');
+            });
+
+            // Clean up URL after audio loads
+            audio.addEventListener('canplaythrough', function() {
+                URL.revokeObjectURL(audioUrl);
+            });
+
+            showToast('Overbreak alert played for ' + agents.length + ' agent(s)', 'success');
+        })
+        .catch(function(error) {
+            console.log('Alert error:', error);
+            showToast('Failed to play alert', 'error');
+        })
+        .finally(function() {
+            // Restore button
+            btn.disabled = false;
+            btnText.textContent = originalText;
         });
     }
 
-    // Test Voice Alert - opens ElevenLabs audio in new tab
+    // Test Voice Alert - plays audio in background (no new tab)
     function testVoiceAlert() {
-        // Open the test endpoint directly - browser will handle audio playback
-        window.open('/alerts/test', '_blank');
-        showToast('If audio doesn\'t play, click the link again', 'success');
+        const btn = document.getElementById('testVoiceBtn');
+        btn.disabled = true;
+        const btnText = btn.querySelector('svg').nextSibling;
+        const originalText = btnText.textContent;
+        btnText.textContent = ' Loading...';
+
+        fetch('/alerts/test')
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Test failed');
+                }
+                return response.blob();
+            })
+            .then(function(blob) {
+                const audioUrl = URL.createObjectURL(blob);
+                const audio = new Audio(audioUrl);
+                audio.play().catch(function(error) {
+                    console.log('Audio playback failed:', error);
+                    showToast('Audio playback failed', 'error');
+                });
+
+                audio.addEventListener('canplaythrough', function() {
+                    URL.revokeObjectURL(audioUrl);
+                });
+
+                showToast('Test voice alert played', 'success');
+            })
+            .catch(function(error) {
+                console.log('Test error:', error);
+                showToast('Failed to play test alert', 'error');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btnText.textContent = originalText;
+            });
+    }
+
+    // Test Slack Alert
+    function testSlackAlert() {
+        const btn = document.getElementById('testSlackBtn');
+        btn.disabled = true;
+        const btnText = btn.querySelector('svg').nextSibling;
+        const originalText = btnText.textContent;
+        btnText.textContent = ' Sending...';
+
+        fetch('/alerts/slack/test')
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success) {
+                    showToast('Slack notification sent!', 'success');
+                } else {
+                    showToast(data.message || 'Slack not configured', 'error');
+                }
+            })
+            .catch(function(error) {
+                console.log('Slack test error:', error);
+                showToast('Failed to send Slack notification', 'error');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btnText.textContent = originalText;
+            });
     }
 
     // Toast notification helper
@@ -851,17 +1094,17 @@
         if (existing) existing.remove();
 
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
+        toast.className = 'toast ' + type;
         toast.textContent = message;
         document.body.appendChild(toast);
 
         // Trigger animation
-        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(function() { toast.classList.add('show'); }, 10);
 
         // Auto remove
-        setTimeout(() => {
+        setTimeout(function() {
             toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
+            setTimeout(function() { toast.remove(); }, 300);
         }, 3000);
     }
 
@@ -931,5 +1174,8 @@
     // Initial update
     updateElapsedTimes();
     updateLastUpdated();
+
+    // Check for pending auto-play alerts on page load
+    checkAndPlayPendingAlerts();
 </script>
 </x-app-layout>
