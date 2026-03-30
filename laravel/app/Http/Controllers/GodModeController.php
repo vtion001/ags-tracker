@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\Auth;
 
 class GodModeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Only allow in local/development environment
-        if (!app()->environment('local', 'development')) {
-            abort(403, 'God Mode is only available in local/development environment.');
+        // Verify God Mode token
+        $token = $request->query('token') ?? $request->header('X-God-Mode-Token');
+
+        if ($token !== config('app.god_mode_token')) {
+            abort(403, 'Invalid God Mode token.');
         }
 
         $users = User::orderBy('role')->orderBy('name')->get();
@@ -28,9 +30,11 @@ class GodModeController extends Controller
 
     public function login(Request $request)
     {
-        // Only allow in local/development environment
-        if (!app()->environment('local', 'development')) {
-            abort(403, 'God Mode is only available in local/development environment.');
+        // Verify God Mode token
+        $token = $request->query('token') ?? $request->header('X-God-Mode-Token');
+
+        if ($token !== config('app.god_mode_token')) {
+            abort(403, 'Invalid God Mode token.');
         }
 
         $request->validate([

@@ -266,14 +266,22 @@
                 font-weight: 500;
             }
             .remember-me {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+            }
+            .remember-me input[type="checkbox"] {
                 accent-color: var(--navy-700);
                 width: 18px;
                 height: 18px;
                 cursor: pointer;
+                flex-shrink: 0;
             }
             .remember-text {
                 font-size: 14px;
                 color: var(--text-secondary);
+                white-space: nowrap;
             }
             .forgot-link {
                 font-size: 14px;
@@ -364,7 +372,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                margin-bottom: 24px;
+                margin-bottom: 48px;
             }
 
             /* Responsive */

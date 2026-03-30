@@ -28,7 +28,7 @@ RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs \
     && rm -f app/vendor/composer/platform_check.php 2>/dev/null || true
 
 # Create storage directories
-RUN mkdir -p app/storage/logs app/storage/framework/{cache,sessions,views} app/storage/app/public \
+RUN mkdir -p app/storage/logs app/storage/framework/{cache,sessions,views} app/storage/app/public app/bootstrap/cache \
     && chmod -R 775 app/storage app/bootstrap/cache
 
 # Expose port

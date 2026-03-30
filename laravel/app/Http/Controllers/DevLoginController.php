@@ -9,11 +9,16 @@ use PragmaRX\Google2FA\Google2FA;
 
 class DevLoginController extends Controller
 {
+    private function isDevMode(): bool
+    {
+        $token = request()->query('token') ?? request()->header('X-God-Mode-Token');
+        return app()->environment('local', 'development') && $token === config('app.god_mode_token');
+    }
+
     public function show()
     {
-        // Only allow in local/development environment
-        if (!app()->environment('local', 'development')) {
-            abort(403, 'Dev login is only available in local/development environment.');
+        if (!$this->isDevMode()) {
+            abort(403, 'Dev login is not available.');
         }
 
         $users = User::orderBy('role')->orderBy('name')->get();
@@ -22,9 +27,8 @@ class DevLoginController extends Controller
 
     public function login(Request $request)
     {
-        // Only allow in local/development environment
-        if (!app()->environment('local', 'development')) {
-            abort(403, 'Dev login is only available in local/development environment.');
+        if (!$this->isDevMode()) {
+            abort(403, 'Dev login is not available.');
         }
 
         $request->validate([
@@ -48,8 +52,8 @@ class DevLoginController extends Controller
 
     public function verifyTotp(Request $request)
     {
-        if (!app()->environment('local', 'development')) {
-            abort(403, 'Dev login is only available in local/development environment.');
+        if (!$this->isDevMode()) {
+            abort(403, 'Dev login is not available.');
         }
 
         $request->validate([
@@ -84,6 +88,10 @@ class DevLoginController extends Controller
 
     public function skipTotp(Request $request)
     {
+        if (!$this->isDevMode()) {
+            abort(403, 'Dev login is not available.');
+        }
+
         session()->forget(['totp_user_id', 'totp_pending']);
 
         return redirect()->route('dev.login.show');

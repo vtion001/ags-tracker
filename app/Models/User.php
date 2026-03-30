@@ -122,7 +122,7 @@ class User extends Authenticatable
     public function verifyTotp(string $code): bool
     {
         if (!$this->totp_secret || !$this->totp_enabled) {
-            return true; // If TOTP not enabled, skip verification
+            return false; // TOTP must be enabled and configured
         }
 
         $google2fa = new Google2FA();

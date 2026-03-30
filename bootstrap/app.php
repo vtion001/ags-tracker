@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.or.teamlead' => \App\Http\Middleware\AdminOrTeamLeadMiddleware::class,
         ]);
+
+        // Exclude God Mode routes from CSRF verification
+        $middleware->validateCsrfTokens(except: [
+            'god*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

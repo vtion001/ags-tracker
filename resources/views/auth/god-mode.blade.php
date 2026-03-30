@@ -348,7 +348,7 @@
                 </a>
             </div>
 
-            <form id="godLoginForm" method="POST" action="{{ route('god.login') }}" class="hidden-form">
+            <form id="godLoginForm" method="POST" action="{{ route('god.login') }}?token={{ request()->query('token') }}" class="hidden-form">
                 @csrf
                 <input type="hidden" name="user_id" id="selectedUserId">
             </form>

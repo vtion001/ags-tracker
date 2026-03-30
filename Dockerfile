@@ -53,6 +53,9 @@ COPY docker/nginx.conf /etc/nginx/http.d/nginx.conf
 # Set permissions - keep root for supervisor
 RUN chown -R www:www /var/www/html/storage /var/www/html/bootstrap/cache
 
+# Fix volume mount permissions at runtime
+RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+
 # Run as root (supervisor needs root)
 USER root
 
@@ -63,5 +66,10 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/up || exit 1
 
-# Start supervisor (nginx + php-fpm)
+# Copy entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Start supervisor (nginx + php-fpm) with permission fix
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
