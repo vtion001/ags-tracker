@@ -18,10 +18,15 @@ class ElevenLabsService
         $this->model = config('elevenlabs.model');
     }
 
+    public function isConfigured(): bool
+    {
+        return !empty($this->apiKey) && !empty($this->voiceId);
+    }
+
     public function generateSpeech(string $text): ?string
     {
-        if (empty($this->apiKey)) {
-            Log::warning('ElevenLabs API key not configured');
+        if (!$this->isConfigured()) {
+            Log::warning('ElevenLabs API key or voice ID not configured');
             return null;
         }
 
