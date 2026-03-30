@@ -21,7 +21,7 @@ class SlackService
         return !empty($this->webhookUrl);
     }
 
-    public function sendOverbreakAlert(array $agents): bool
+    public function sendOverbreakAlert(array $agents, int $warningNumber = 1): bool
     {
         if (!$this->isConfigured()) {
             Log::warning('Slack webhook URL not configured');
@@ -31,6 +31,20 @@ class SlackService
         if (empty($agents)) {
             return false;
         }
+
+        // Determine emoji and title based on warning level
+        $warningEmoji = match($warningNumber) {
+            1 => '🚨',
+            2 => '⚠️',
+            3 => '❌',
+            default => '🚨',
+        };
+        $warningText = match($warningNumber) {
+            1 => 'FIRST WARNING',
+            2 => 'SECOND WARNING',
+            3 => 'FINAL WARNING',
+            default => 'WARNING',
+        };
 
         try {
             // Group agents by team lead email
@@ -49,7 +63,7 @@ class SlackService
                     'type' => 'header',
                     'text' => [
                         'type' => 'plain_text',
-                        'text' => '🚨 Overbreak Alert',
+                        'text' => "{$warningEmoji} Overbreak Alert - {$warningText}",
                         'emoji' => true,
                     ],
                 ],
@@ -57,7 +71,7 @@ class SlackService
                     'type' => 'section',
                     'text' => [
                         'type' => 'mrkdwn',
-                        'text' => 'The following agents have exceeded their allowable break time and need immediate attention:',
+                        'text' => "The following agents have exceeded their allowable break time and need immediate attention:",
                     ],
                 ],
                 ['type' => 'divider'],
@@ -87,7 +101,7 @@ class SlackService
                 'elements' => [
                     [
                         'type' => 'mrkdwn',
-                        'text' => 'AGS Break Tracker | This channel receives automatic overbreak notifications.',
+                        'text' => "AGS Break Tracker | {$warningText} | Voice alerts will follow for each agent.",
                     ],
                 ],
             ];

@@ -60,10 +60,10 @@ class CheckOverbreaks extends Command
 
         $this->info('Alerting ' . count($agentsToAlert) . ' agent(s)...');
 
-        // Send Slack notification
+        // Send Slack notification (always warning 1 on first detection)
         if ($slack->isConfigured()) {
             $this->info('Sending Slack notification...');
-            $slackResult = $slack->sendOverbreakAlert($agentsToAlert);
+            $slackResult = $slack->sendOverbreakAlert($agentsToAlert, 1); // Pass warning 1
 
             if ($slackResult) {
                 $this->info('Slack notification sent successfully.');
@@ -75,15 +75,16 @@ class CheckOverbreaks extends Command
         }
 
         // Store pending alert metadata (not audio - audio generated on-demand)
+        // Queue all 3 warnings for new agents, track escalation level per agent
         if ($elevenLabs->isConfigured()) {
             $cacheKey = 'pending_audio_alerts';
             $existingAlerts = Cache::get($cacheKey, []);
 
-            // Add new agents to pending alerts (avoid duplicates)
+            // Add new agents to pending alerts with all 3 warnings
             $existingNames = array_column($existingAlerts, 'agent_name');
             foreach ($agentsToAlert as $agent) {
                 if (!in_array($agent['user_name'], $existingNames)) {
-                    // Generate 3 warning clips for this agent
+                    // Queue all 3 warning clips for this agent
                     for ($i = 0; $i < 3; $i++) {
                         $existingAlerts[] = [
                             'agent_name' => $agent['user_name'],
@@ -91,6 +92,8 @@ class CheckOverbreaks extends Command
                             'warning_number' => $i + 1,
                         ];
                     }
+                    // Track that this agent is at warning level 1
+                    Cache::put("overbreak_warning_{$agent['break_id']}", 1, 600);
                 }
             }
 
