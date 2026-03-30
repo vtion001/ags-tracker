@@ -74,19 +74,28 @@ class CheckOverbreaks extends Command
             $this->warn('Slack not configured, skipping Slack notification.');
         }
 
-        // Store audio clips for batch playback
+        // Store pending alert metadata (not audio - audio generated on-demand)
         if ($elevenLabs->isConfigured()) {
-            $this->info('Generating voice alerts...');
-            $audioClips = $elevenLabs->generateOverbreakBatchAlerts($agentsToAlert);
+            $cacheKey = 'pending_audio_alerts';
+            $existingAlerts = Cache::get($cacheKey, []);
 
-            if (!empty($audioClips)) {
-                // Cache audio clips for playback (they'll be fetched by the frontend)
-                $cacheKey = 'pending_audio_alerts';
-                Cache::put($cacheKey, $audioClips, 300); // Keep for 5 minutes
-
-                $this->info('Generated ' . count($audioClips) . ' voice alert clip(s).');
-                $this->info('Audio alerts are ready for playback on the Overbreaks dashboard.');
+            // Add new agents to pending alerts (avoid duplicates)
+            $existingNames = array_column($existingAlerts, 'agent_name');
+            foreach ($agentsToAlert as $agent) {
+                if (!in_array($agent['user_name'], $existingNames)) {
+                    // Generate 3 warning clips for this agent
+                    for ($i = 0; $i < 3; $i++) {
+                        $existingAlerts[] = [
+                            'agent_name' => $agent['user_name'],
+                            'over_minutes' => $agent['over_minutes'],
+                            'warning_number' => $i + 1,
+                        ];
+                    }
+                }
             }
+
+            Cache::put($cacheKey, $existingAlerts, 300); // Keep for 5 minutes
+            $this->info('Queued ' . count($existingAlerts) . ' voice alert(s) for playback.');
         } else {
             $this->warn('ElevenLabs not configured, skipping voice alerts.');
         }

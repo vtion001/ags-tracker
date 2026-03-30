@@ -6,12 +6,12 @@
     $departments = $departments ?? collect();
     $filters = $filters ?? ['department' => '', 'role' => '', 'status' => ''];
 
-    // Combine onBreak and overbreak for display, with overbreak flagged
-    $allBreaks = $onBreak->map(function($break) {
-        $break->is_overbreak = false;
-        return $break;
-    })->merge($overbreak->map(function($break) {
+    // Combine onBreak and overbreak for display, with overbreak at the top
+    $allBreaks = $overbreak->map(function($break) {
         $break->is_overbreak = true;
+        return $break;
+    })->merge($onBreak->map(function($break) {
+        $break->is_overbreak = false;
         return $break;
     }));
 @endphp
@@ -850,11 +850,16 @@
     // Track current playing alert
     let currentAudio = null;
     let pendingAlertsData = [];
+    let isPlaying = false;
 
     // Fetch pending alerts from server
     async function fetchPendingAlerts() {
         try {
             const response = await fetch('/alerts/pending');
+            if (!response.ok) {
+                console.error('Failed to fetch alerts:', response.status);
+                return;
+            }
             const data = await response.json();
 
             if (data.alerts && data.alerts.length > 0) {
@@ -870,14 +875,15 @@
         }
     }
 
-    // Play the next pending audio alert
+    // Play the next pending audio alert (fetches fresh audio from server)
     async function playNextAlert() {
         if (pendingAlertsData.length === 0) {
             showToast('No more pending alerts', 'error');
+            isPlaying = false;
             return;
         }
 
-        const alert = pendingAlertsData.shift();
+        const alertData = pendingAlertsData.shift();
         document.getElementById('pendingCount').textContent = pendingAlertsData.length;
 
         if (pendingAlertsData.length === 0) {
@@ -885,45 +891,57 @@
         }
 
         try {
-            // Create audio from base64 data
-            const audioBlob = base64ToBlob(alert.audio, 'audio/mpeg');
-            const audioUrl = URL.createObjectURL(audioBlob);
+            // Fetch fresh audio from server with agent info
+            const params = new URLSearchParams({
+                agent_name: alertData.agent_name,
+                over_minutes: alertData.over_minutes || 0,
+                warning_number: alertData.warning_number || 1
+            });
+
+            showToast(`Playing alert for ${alertData.agent_name} (Warning ${alertData.warning_number})...`, 'success');
+
+            const response = await fetch(`/alerts/overbreak?${params}`);
+            if (!response.ok) {
+                showToast(`Failed to get audio for ${alertData.agent_name}`, 'error');
+                playNextAlert(); // Try next alert
+                return;
+            }
+
+            const audioBlob = await response.blob();
 
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio = null;
             }
 
+            const audioUrl = URL.createObjectURL(audioBlob);
             currentAudio = new Audio(audioUrl);
+
             currentAudio.onended = function() {
-                showToast(`Alert for ${alert.agent_name} completed`, 'success');
                 URL.revokeObjectURL(audioUrl);
+                showToast(`Alert for ${alertData.agent_name} completed`, 'success');
+                playNextAlert(); // Play next alert
             };
             currentAudio.onerror = function() {
-                showToast(`Failed to play alert for ${alert.agent_name}`, 'error');
                 URL.revokeObjectURL(audioUrl);
+                showToast(`Failed to play alert for ${alertData.agent_name}`, 'error');
+                playNextAlert(); // Try next alert
             };
 
-            showToast(`Playing alert for ${alert.agent_name} (Warning ${alert.warning_number})`, 'success');
             await currentAudio.play();
         } catch (error) {
             showToast(`Error playing alert: ${error.message}`, 'error');
+            isPlaying = false;
         }
-    }
-
-    // Convert base64 to Blob
-    function base64ToBlob(base64, mimeType) {
-        const byteCharacters = atob(base64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        return new Blob([byteArray], { type: mimeType });
     }
 
     // Voice Alert Function - plays pending ElevenLabs audio for overbreak agents
     async function triggerVoiceAlert() {
+        if (isPlaying) {
+            showToast('Already playing alerts', 'error');
+            return;
+        }
+
         // First fetch the latest pending alerts
         await fetchPendingAlerts();
 
@@ -932,14 +950,40 @@
             return;
         }
 
-        // Play alerts sequentially
+        // Start playing alerts sequentially
+        isPlaying = true;
         playNextAlert();
     }
 
-    // Test Voice Alert - plays a generic test audio
-    function testVoiceAlert() {
-        window.open('/alerts/test', '_blank');
-        showToast('Test alert opened in new tab', 'success');
+    // Test Voice Alert - plays a generic test audio in-page
+    async function testVoiceAlert() {
+        try {
+            const response = await fetch('/alerts/test');
+            if (!response.ok) {
+                showToast('Test audio failed', 'error');
+                return;
+            }
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            if (currentAudio) {
+                currentAudio.pause();
+            }
+
+            currentAudio = new Audio(audioUrl);
+            currentAudio.onended = function() {
+                URL.revokeObjectURL(audioUrl);
+            };
+            currentAudio.onerror = function() {
+                URL.revokeObjectURL(audioUrl);
+                showToast('Test audio playback failed', 'error');
+            };
+
+            showToast('Playing test alert...', 'success');
+            await currentAudio.play();
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+        }
     }
 
     // Toast notification helper

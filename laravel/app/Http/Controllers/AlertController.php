@@ -24,13 +24,14 @@ class AlertController extends Controller
 
         // Support both GET and POST
         $agentName = $request->input('agent_name') ?? $request->query('agent_name');
-        $overMinutes = $request->input('over_minutes') ?? $request->query('over_minutes');
+        $overMinutes = (int) ($request->input('over_minutes') ?? $request->query('over_minutes'));
+        $warningNumber = (int) ($request->input('warning_number') ?? $request->query('warning_number') ?? 1);
 
-        if (!$agentName || !$overMinutes) {
-            return response('Missing parameters', 400);
+        if (!$agentName) {
+            return response('Missing agent_name parameter', 400);
         }
 
-        $audio = $this->elevenLabs->generateOverbreakAlert($agentName, (int) $overMinutes);
+        $audio = $this->elevenLabs->generateOverbreakAlert($agentName, $overMinutes, $warningNumber);
 
         if ($audio === null) {
             return response('Audio generation failed', 503);
