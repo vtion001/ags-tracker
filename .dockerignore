@@ -1,26 +1,68 @@
+# =====================================================
+# Docker Ignore - Production Build
+# =====================================================
+
+# Dependencies
 /vendor
 /node_modules
+/.npm
+
+# Git
 /.git
+/.gitignore
+/.gitattributes
+
+# IDE
 /.idea
 /.vscode
-/.env
+/.vscode
+/.fleet
+/.nova
+/.zed
+
+# Environment files (keep only .env.docker for builds)
+.env
 .env.*
-!/.env.docker
+!.env.docker
 !.env.example
+!.env.production
+
+# Logs & Cache
 /storage/*.key
 /storage/logs/*
-!/storage/logs/.gitkeep
 /storage/framework/cache/*
-!/storage/framework/cache/.gitkeep
 /storage/framework/sessions/*
-!/storage/framework/sessions/.gitkeep
 /storage/framework/views/*
-!/storage/framework/views/.gitkeep
 /bootstrap/cache/*
-!/bootstrap/cache/.gitkeep
 *.log
 *.cache
+
+# OS
 .DS_Store
 Thumbs.db
-*.sql
+
+# Database
 *.sqlite
+*.sqlite3
+
+# Testing
+.phpunit.result.cache
+/.phpunit.cache
+/tests
+
+# Documentation
+README.md
+/docs
+*.md
+
+# Docker Compose (keep these for local dev)
+docker-compose*.yml
+
+# Dockerfile (keep for reference)
+Dockerfile*
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml

@@ -1,28 +1,30 @@
-services:
-  nginx:
-    image: nginx:alpine
-    container_name: ags-nginx
-    ports:
-      - "0.0.0.0:8000:80"
-    volumes:
-      - .:/var/www/html
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - php
-    networks:
-      - ags-network
+# =====================================================
+# AGS Break Tracker - Production Docker Compose
+# =====================================================
+# Usage: docker-compose up -d
+# =====================================================
 
-  php:
+services:
+  # =====================================================
+  # Laravel Application
+  # =====================================================
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ags-php
+    container_name: ags-app
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://localhost
     env_file:
       - .env
     volumes:
-      - ags-storage:/var/www/html/storage
-      - ags-bootstrap-cache:/var/www/html/bootstrap/cache
-      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - app-storage:/var/www/html/storage
+      - ./docker/nginx.conf:/etc/nginx/http.d/nginx.conf:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -30,35 +32,52 @@ services:
         condition: service_healthy
     networks:
       - ags-network
-    environment:
-      - APP_ENV=production
-      - APP_DEBUG=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
+  # =====================================================
+  # MySQL Database
+  # =====================================================
   mysql:
     image: mysql:8.0
     container_name: ags-mysql
-    ports:
-      - "3307:3306"
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: agslocal2026
-      MYSQL_DATABASE: ags_tracker
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-agsprod2026}
+      MYSQL_DATABASE: ${DB_DATABASE:-ags_tracker}
+      MYSQL_USER: ${DB_USERNAME:-agsuser}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-agsprod2026}
+    ports:
+      - "3306:3306"
     volumes:
-      - ags-mysql-data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql.cnf:/etc/mysql/conf.d/custom.cnf:ro
     networks:
       - ags-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 60s
 
+  # =====================================================
+  # Redis Cache
+  # =====================================================
   redis:
     image: redis:7-alpine
     container_name: ags-redis
+    restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
-      - ags-redis-data:/data
+      - redis-data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
     networks:
       - ags-network
     healthcheck:
@@ -67,14 +86,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # =====================================================
+  # Workspace (for artisan commands)
+  # =====================================================
   workspace:
-    image: agssupabase-php
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: ags-workspace
+    restart: "no"
     env_file:
       - .env
     volumes:
-      - ags-storage:/var/www/html/storage
-      - ags-bootstrap-cache:/var/www/html/bootstrap/cache
+      - app-storage:/var/www/html/storage
     depends_on:
       mysql:
         condition: service_healthy
@@ -82,17 +106,22 @@ services:
         condition: service_healthy
     networks:
       - ags-network
-    environment:
-      - APP_ENV=production
-      - APP_DEBUG=false
-    entrypoint: ['sleep', 'infinity']
+    entrypoint: ["sleep", "infinity"]
 
+# =====================================================
+# Networks
+# =====================================================
 networks:
   ags-network:
     driver: bridge
 
+# =====================================================
+# Volumes
+# =====================================================
 volumes:
-  ags-mysql-data:
-  ags-redis-data:
-  ags-storage:
-  ags-bootstrap-cache:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  app-storage:
+    driver: local
