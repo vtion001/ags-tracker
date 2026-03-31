@@ -20,17 +20,26 @@ class GoogleController extends Controller
     {
         $googleUser = Socialite::driver('google')->user();
 
-        $user = User::where('google_id', $googleUser->id)
-            ->orWhere('email', $googleUser->email)
-            ->first();
+        // First check if user exists with this Google ID
+        $user = User::where('google_id', $googleUser->id)->first();
 
-        if ($user) {
-            // Update Google ID if not set
-            if (!$user->google_id) {
-                $user->update(['google_id' => $googleUser->id]);
+        if (!$user) {
+            // No Google ID match - check if email exists without Google ID
+            // Only link if email exists AND has no google_id AND no password (never logged in locally)
+            $user = User::where('email', $googleUser->email)
+                ->whereNull('google_id')
+                ->whereNotNull('password')
+                ->first();
+
+            if ($user) {
+                // Email exists with local password - user must login locally first
+                // Redirect to login with error message
+                return redirect()->route('login')->withErrors([
+                    'email' => 'An account with this email already exists. Please login with your password first, then link your Google account from your profile settings.',
+                ]);
             }
-        } else {
-            // Create new user from Google OAuth
+
+            // No match at all - create new user
             $user = User::create([
                 'name' => $googleUser->name,
                 'email' => $googleUser->email,
