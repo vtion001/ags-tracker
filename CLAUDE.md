@@ -9,10 +9,10 @@ AGS Break Tracker is a Laravel application for tracking employee breaks (15m/60m
 ## Tech Stack
 
 - **Framework**: Laravel 11 (PHP 8.2+)
-- **Database**: MySQL 8.0
+- **Database**: MySQL 8.0 (local dev), PostgreSQL (Render/Railway production)
 - **Cache**: Redis 7
 - **Auth**: JWT (php-open-source-saver/jwt-auth) + Google2FA for TOTP
-- **Frontend**: Laravel Breeze (Blade + Tailwind)
+- **Frontend**: Laravel Breeze (Blade + Tailwind) + Vite
 - **Real-time**: Laravel Reverb
 - **External APIs**: Slack, ElevenLabs
 
@@ -117,7 +117,20 @@ docker/                 # nginx.conf, mysql.cnf, redis.conf, entrypoint.sh
 ## Deployment
 
 - **Docker**: `docker-compose.yml` with app, mysql, redis services
-- **Railway**: `Dockerfile.railway`, `render.yaml`, `railway.json`
+- **Railway/Render**: `Dockerfile.railway`, `render.yaml`, `railway.json`
 - **Production**: Uses `docker-compose.prod.yml` for HTTPS reverse proxy setup
+
+### Render Deployment Notes
+
+- **Dockerfile used**: Render defaults to `./Dockerfile` (not `Dockerfile.railway`)
+- **Ensure `libpq-dev` is installed** for Alpine images so `pdo_pgsql` extension builds
+- **Vite assets**: `/public/build` must NOT be gitignored for production - required for `ViteManifestNotFoundException` fix
+- **Sessions migration**: Must be in `database/migrations/` not `laravel/database/migrations/`
+- **entrypoint.sh**: Use `migrate --force` NOT `migrate:fresh` (fresh destroys all data!)
+
+### PHPUnit Testing
+
+- `phpunit.xml` must have `DB_CONNECTION=sqlite` and `DB_DATABASE=:memory:` uncommented
+- Without this, tests try to connect to MySQL from `.env`
 
 Default test accounts after seeding: `admin@ags.com`, `sarah.tl@ags.com`, `john.agent@ags.com` (password: `agent707`)
