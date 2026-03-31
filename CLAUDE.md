@@ -87,9 +87,13 @@ Key `.env` variables:
 - `/god` — Development bypass login (disabled in production)
 - `/dev-login` — Development login with TOTP skip
 
-## Testing
+## Broadcasting / Real-time
 
-Tests use `tests/Feature/` and `tests/Unit/` directories. PHPUnit configured in `phpunit.xml` with in-memory array drivers for cache/session/queue.
+- `BROADCAST_CONNECTION=log` in production (Render) - events logged but not broadcast
+- `resources/js/echo.js` has conditional Echo initialization - only connects when `VITE_REVERB_HOST` is set
+- If real-time is needed, deploy Laravel Reverb server separately or use Pusher
+
+Tests use `tests/Feature/` and `tests/Unit/` directories. PHPUnit configured in `phpunit.xml` with in-memory array drivers for cache/session/queue and BROADCAST_CONNECTION=log to avoid WebSocket errors.
 
 ## Directory Structure
 
