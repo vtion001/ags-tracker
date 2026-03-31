@@ -41,17 +41,17 @@ class OnboardingController extends Controller
     {
         $request->validate([
             'role' => ['required', Rule::in(['agent', 'tl'])],
-            'team_id' => ['required_if:role,agent', 'nullable|exists:teams,id'],
+            'account_name' => ['required_if:role,agent', 'nullable', 'string', 'max:255'],
             'department' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = Auth::user();
 
-        // Agents can select their own team and start with pending status
+        // Agents can select their own account_name and start with pending status
         // Team leads are auto-approved
         $user->update([
             'role' => $request->role,
-            'team_id' => $request->role === 'agent' ? $request->team_id : null,
+            'account_name' => $request->role === 'agent' ? $request->account_name : null,
             'department' => $request->department,
             'status' => $request->role === 'tl' ? 'active' : 'pending',
         ]);

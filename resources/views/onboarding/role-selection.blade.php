@@ -52,16 +52,16 @@
 
         <!-- Team Selection (only for agents) -->
         <div id="team-selection" class="form-group {{ old('role') === 'tl' ? 'hidden' : '' }}">
-            <label class="form-label" for="team_id">Select Your Team</label>
-            <select name="team_id" id="team_id" class="form-input" {{ old('role') !== 'tl' ? 'required' : '' }}>
-                <option value="">-- Select a Team --</option>
-                @foreach($teams as $team)
-                    <option value="{{ $team->id }}" {{ old('team_id') == $team->id ? 'selected' : '' }}>
-                        {{ $team->name }}
-                    </option>
-                @endforeach
+            <label class="form-label" for="account_name">Select Your Account</label>
+            <select name="account_name" id="account_name" class="form-input" {{ old('role') !== 'tl' ? 'required' : '' }}>
+                <option value="">-- Select an Account --</option>
+                <option value="flyland" {{ old('account_name') === 'flyland' ? 'selected' : '' }}>Flyland</option>
+                <option value="legacy" {{ old('account_name') === 'legacy' ? 'selected' : '' }}>Legacy</option>
+                <option value="tbt" {{ old('account_name') === 'tbt' ? 'selected' : '' }}>TBT</option>
+                <option value="Takahami" {{ old('account_name') === 'Takahami' ? 'selected' : '' }}>Takahami</option>
+                <option value="Banyan" {{ old('account_name') === 'Banyan' ? 'selected' : '' }}>Banyan</option>
             </select>
-            @error('team_id')
+            @error('account_name')
                 <p class="error-message mt-2">{{ $message }}</p>
             @enderror
         </div>
@@ -97,7 +97,7 @@
         document.querySelectorAll('input[name="role"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 const teamSelection = document.getElementById('team-selection');
-                const teamInput = document.getElementById('team_id');
+                const teamInput = document.getElementById('account_name');
                 if (this.value === 'tl') {
                     teamSelection.classList.add('hidden');
                     teamInput.removeAttribute('required');

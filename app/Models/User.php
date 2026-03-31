@@ -22,6 +22,7 @@ class User extends Authenticatable
         'role',
         'department',
         'team_id',
+        'account_name',
         'position',
         'contact_number',
         'shift_schedule',
