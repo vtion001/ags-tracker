@@ -100,7 +100,7 @@
             .brand-title {
                 font-size: 32px;
                 font-weight: 700;
-                color: var(--white);
+                color: #ffffff;
                 margin-bottom: 16px;
                 letter-spacing: -0.5px;
                 animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
