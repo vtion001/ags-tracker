@@ -1,38 +1,57 @@
-FROM php:8.2-cli
+# =====================================================
+# AGS Break Tracker - Render/Railway Deployment
+# =====================================================
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+FROM php:8.2-alpine
+
+# Install system dependencies for Alpine
+RUN apk add --no-cache \
     git \
     curl \
     libpng-dev \
-    libonig-dev \
+    oniguruma-dev \
     libxml2-dev \
     libzip-dev \
-    zip \
-    unzip \
+    openssl \
+    tzdata \
+    autoconf \
+    g++ \
+    make \
+    linux-headers \
+    alpine-sdk \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && pecl install redis-6.0.2 && docker-php-ext-enable redis \
+    && cp /usr/share/zoneinfo/UTC /etc/localtime \
+    && echo "UTC" > /etc/timezone \
+    && rm -rf /tmp/pear /var/cache/apk/*
 
 # Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Set working directory
-WORKDIR /app
+WORKDIR /var/www/html
 
 # Copy application files
-COPY . /app
+COPY . /var/www/html
 
-# Install dependencies
+# Install composer dependencies
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs \
-    && rm -f app/vendor/composer/platform_check.php 2>/dev/null || true
+    && rm -f vendor/composer/platform_check.php 2>/dev/null || true
 
 # Create storage directories
-RUN mkdir -p app/storage/logs app/storage/framework/{cache,sessions,views} app/storage/app/public app/bootstrap/cache \
-    && chmod -R 775 app/storage app/bootstrap/cache
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} storage/app/public bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Expose port
-EXPOSE 8080
+# Copy entrypoint
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Start Laravel server
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
+# Expose port from environment (Render) or default 8080
+EXPOSE ${PORT:-8080}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8080}/up || exit 1
+
+# Run entrypoint (runs migrations then starts PHP server)
+ENTRYPOINT ["/entrypoint.sh"]
