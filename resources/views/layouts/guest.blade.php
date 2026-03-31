@@ -384,19 +384,43 @@
                 .login-container { flex-direction: column; }
                 .brand-panel {
                     flex: none;
-                    padding: 48px 24px;
+                    padding: 40px 20px;
                     min-height: auto;
                 }
-                .brand-logo { width: 100px; height: 100px; margin-bottom: 32px; }
-                .brand-title { font-size: 26px; }
-                .brand-features { gap: 24px; margin-top: 32px; }
+                .brand-logo { width: 80px; height: 80px; margin-bottom: 24px; border-radius: 16px; }
+                .brand-title { font-size: 22px; }
+                .brand-subtitle { font-size: 13px; }
+                .brand-features { gap: 16px; margin-top: 24px; }
+                .brand-feature-icon { width: 32px; height: 32px; }
+                .brand-feature-text { font-size: 10px; }
                 .form-panel {
                     width: 100%;
-                    padding: 48px 24px;
+                    padding: 32px 20px;
                 }
                 .form-panel::before {
                     height: 3px;
                 }
+                .form-title { font-size: 22px; }
+                .form-desc { font-size: 13px; }
+                .form-group { margin-bottom: 16px; }
+                .form-input { min-height: 46px; padding: 0 16px; font-size: 14px; }
+                .google-btn { min-height: 46px; padding: 0 16px; font-size: 13px; }
+                .submit-btn { min-height: 48px; font-size: 13px; }
+                .form-footer-row { flex-direction: column; gap: 12px; margin-bottom: 24px; align-items: stretch; }
+                .remember-me { gap: 6px; }
+                .remember-text { font-size: 12px; }
+                .forgot-link { font-size: 12px; text-align: center; }
+                .form-footer-links { flex-direction: column; gap: 12px; margin-top: 20px; }
+                .error-message { padding: 12px 16px; font-size: 13px; border-radius: 12px; }
+                .divider { margin: 20px 0; }
+            }
+            @media (max-width: 480px) {
+                .brand-panel { padding: 32px 16px; }
+                .form-panel { padding: 24px 16px; }
+                .form-title { font-size: 20px; }
+                .form-input { min-height: 44px; border-radius: 12px; }
+                .google-btn { border-radius: 12px; }
+                .submit-btn { border-radius: 12px; }
             }
         </style>
     </head>
