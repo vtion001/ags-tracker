@@ -15,13 +15,13 @@ services:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        sync: false
+        value: true
       - key: APP_TIMEZONE
         value: UTC
       - key: APP_URL
-        sync: false
+        value: https://ags-break-tracker.onrender.com
       - key: APP_KEY
-        generateValue: true
+        value: base64:WAx9Aby1mD+XHK951ikF1NtmLMs5u6PQiVzOD4aiaA0=
       - key: LOG_CHANNEL
         value: stack
       - key: LOG_LEVEL
