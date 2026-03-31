@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -20,6 +21,7 @@ class User extends Authenticatable
         'avatar',
         'role',
         'department',
+        'team_id',
         'position',
         'contact_number',
         'shift_schedule',
@@ -33,6 +35,8 @@ class User extends Authenticatable
         'totp_secret',
         'totp_enabled',
         'totp_setup_at',
+        'status',
+        'onboarding_completed',
     ];
 
     protected $hidden = [
@@ -49,6 +53,7 @@ class User extends Authenticatable
             'totp_enabled' => 'boolean',
             'totp_setup_at' => 'datetime',
             'hire_date' => 'date',
+            'onboarding_completed' => 'boolean',
         ];
     }
 
@@ -75,6 +80,11 @@ class User extends Authenticatable
         return $this->hasMany(ActiveBreak::class);
     }
 
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
     public function breakHistory(): HasMany
     {
         return $this->hasMany(BreakHistory::class);
@@ -98,6 +108,31 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function hasCompletedOnboarding(): bool
+    {
+        return $this->onboarding_completed === true;
+    }
+
+    public function requiresOnboarding(): bool
+    {
+        return !$this->onboarding_completed && $this->isAgent();
     }
 
     public function hasActiveBreak(): bool

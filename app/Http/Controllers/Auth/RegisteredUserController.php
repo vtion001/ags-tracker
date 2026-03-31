@@ -40,12 +40,15 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'status' => 'pending', // Requires onboarding approval
+            'role' => 'agent', // Default role, will be finalized in onboarding
         ]);
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // Redirect to onboarding to complete role and team selection
+        return redirect()->route('onboarding.role');
     }
 }

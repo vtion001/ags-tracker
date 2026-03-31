@@ -176,13 +176,23 @@ class BreakService
 
     public function getPeerStats(User $user): array
     {
-        $teamUsers = User::where('tl_email', $user->tl_email)
-            ->where('id', '!=', $user->id)
-            ->pluck('id');
+        // Handle users without team lead assignment (null tl_email)
+        if ($user->tl_email) {
+            $teamUsers = User::where('tl_email', $user->tl_email)
+                ->where('id', '!=', $user->id)
+                ->pluck('id');
+        } else {
+            $teamUsers = collect([]);
+        }
 
-        $deptUsers = User::where('department', $user->department)
-            ->where('id', '!=', $user->id)
-            ->pluck('id');
+        // Handle users without department assignment (null department)
+        if ($user->department) {
+            $deptUsers = User::where('department', $user->department)
+                ->where('id', '!=', $user->id)
+                ->pluck('id');
+        } else {
+            $deptUsers = collect([]);
+        }
 
         $teamHistory = BreakHistory::whereIn('user_id', $teamUsers)
             ->where('started_at', '>=', now()->subDays(30))

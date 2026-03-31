@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminTicketController;
 use App\Http\Controllers\AlertController;
 use App\Http\Controllers\BreakController;
 use App\Http\Controllers\DevLoginController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OverbreakController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TicketController;
@@ -21,12 +22,22 @@ Route::post('/dev-totp-skip', [DevLoginController::class, 'skipTotp'])->name('de
 // God Mode route (only in local development - bypasses ALL auth)
 Route::get('/god', [\App\Http\Controllers\GodModeController::class, 'index'])->name('god');
 Route::post('/god', [\App\Http\Controllers\GodModeController::class, 'login'])->name('god.login');
+Route::get('/god-bypass', [\App\Http\Controllers\GodModeController::class, 'bypass'])->name('god.bypass');
 
 // Test route for voice alert (no auth required for testing)
 Route::get('/alerts/test', [AlertController::class, 'testAlert'])->name('alerts.test');
 Route::get('/alerts/slack/test', [AlertController::class, 'testSlack'])->name('alerts.slack.test');
 
-Route::get('/dashboard', [BreakController::class, 'dashboard'])
+Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+    // Refresh user from database to get latest status changes (e.g., after admin approval)
+    $user = $request->user()?->fresh();
+    if ($user && $user->requiresOnboarding()) {
+        // Re-authenticate with fresh user data to update session
+        \Illuminate\Support\Facades\Auth::setUser($user);
+        return redirect()->route('onboarding.role');
+    }
+    return app(\App\Http\Controllers\BreakController::class)->dashboard($request);
+})
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
@@ -83,6 +94,26 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/{id}', [TicketController::class, 'show'])->name('tickets.show')->where('id', '[0-9]+');
     Route::post('/tickets/{id}/comment', [TicketController::class, 'addComment'])->name('tickets.comment')->where('id', '[0-9]+');
     Route::post('/tickets/{id}/status', [TicketController::class, 'updateStatus'])->name('tickets.status')->where('id', '[0-9]+');
+
+    // Onboarding Routes
+    Route::prefix('onboarding')->middleware(['auth'])->group(function () {
+        Route::get('/role-selection', [OnboardingController::class, 'showRoleSelection'])->name('onboarding.role');
+        Route::post('/role-selection', [OnboardingController::class, 'storeRoleSelection'])->name('onboarding.role.store');
+        Route::get('/profile', [OnboardingController::class, 'showProfile'])->name('onboarding.profile');
+        Route::post('/profile', [OnboardingController::class, 'storeProfile'])->name('onboarding.profile.store');
+        Route::get('/emergency', [OnboardingController::class, 'showEmergency'])->name('onboarding.emergency');
+        Route::post('/emergency', [OnboardingController::class, 'storeEmergency'])->name('onboarding.emergency.store');
+        Route::get('/security', [OnboardingController::class, 'showSecurity'])->name('onboarding.security');
+        Route::post('/security', [OnboardingController::class, 'storeSecurity'])->name('onboarding.security.store');
+        Route::post('/skip', [OnboardingController::class, 'skip'])->name('onboarding.skip');
+
+        // Admin: Pending users management
+        Route::middleware(['admin.or.teamlead'])->group(function () {
+            Route::get('/pending', [OnboardingController::class, 'pendingUsers'])->name('onboarding.pending');
+            Route::post('/{user}/approve', [OnboardingController::class, 'approveUser'])->name('onboarding.approve');
+            Route::post('/{user}/reject', [OnboardingController::class, 'rejectUser'])->name('onboarding.reject');
+        });
+    });
 });
 
 require __DIR__ . '/auth.php';

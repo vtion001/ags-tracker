@@ -47,10 +47,17 @@ class GoogleController extends Controller
                 'avatar' => $googleUser->avatar,
                 'password' => Hash::make(bin2hex(random_bytes(16))),
                 'role' => 'agent',
+                'status' => 'pending', // Requires onboarding approval
             ]);
         }
 
         Auth::login($user);
+
+        // Check if user needs to complete onboarding
+        if ($user->requiresOnboarding() || ($user->isPending() && !$user->hasCompletedOnboarding())) {
+            return redirect()->route('onboarding.role');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 }

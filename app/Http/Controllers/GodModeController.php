@@ -48,4 +48,28 @@ class GodModeController extends Controller
 
         return redirect()->route('dashboard');
     }
+
+    /**
+     * Simple email-based God Mode bypass for quick testing.
+     * Access: /god-bypass?token=YOUR_TOKEN&email=user@example.com
+     */
+    public function bypass(Request $request)
+    {
+        $token = $request->query('token') ?? $request->header('X-God-Mode-Token');
+
+        if ($token !== config('app.god_mode_token')) {
+            abort(403, 'Invalid God Mode token.');
+        }
+
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $user = User::where('email', $request->email)->firstOrFail();
+
+        // God mode bypasses everything - no TOTP, no password, no verification
+        Auth::login($user);
+
+        return redirect()->route('dashboard');
+    }
 }
