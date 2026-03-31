@@ -20,7 +20,7 @@ RUN apk add --no-cache \
     g++ \
     make \
     linux-headers \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+    && docker-php-ext-install pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd zip \
     && pecl install redis-6.0.2 && docker-php-ext-enable redis \
     && cp /usr/share/zoneinfo/UTC /etc/localtime \
     && echo "UTC" > /etc/timezone \
