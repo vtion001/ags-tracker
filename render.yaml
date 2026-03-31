@@ -15,11 +15,11 @@ services:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: true
+        value: false
       - key: APP_TIMEZONE
         value: UTC
       - key: APP_URL
-        value: https://ags-break-tracker.onrender.com
+        value: https://ags-break-tracker-hmcu.onrender.com
       - key: APP_KEY
         value: base64:WAx9Aby1mD+XHK951ikF1NtmLMs5u6PQiVzOD4aiaA0=
       - key: LOG_CHANNEL
@@ -50,6 +50,8 @@ services:
         value: database
       - key: SESSION_LIFETIME
         value: "120"
+      - key: SESSION_SECURE_COOKIE
+        value: "0"
       - key: CACHE_STORE
         value: database
       - key: BROADCAST_CONNECTION
