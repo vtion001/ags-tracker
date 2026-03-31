@@ -125,7 +125,7 @@ docker/                 # nginx.conf, mysql.cnf, redis.conf, entrypoint.sh
 - **Dockerfile used**: Render defaults to `./Dockerfile` (not `Dockerfile.railway`)
 - **Ensure `libpq-dev` is installed** for Alpine images so `pdo_pgsql` extension builds
 - **Vite assets**: `/public/build` must NOT be gitignored for production - required for `ViteManifestNotFoundException` fix
-- **Sessions migration**: Must be in `database/migrations/` not `laravel/database/migrations/`
+- **Sessions migration**: Already included in `0001_01_01_000000_create_users_table.php` - do NOT add a separate sessions migration
 - **entrypoint.sh**: Use `migrate --force` NOT `migrate:fresh` (fresh destroys all data!)
 
 ### PHPUnit Testing
