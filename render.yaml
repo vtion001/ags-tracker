@@ -64,6 +64,12 @@ services:
         value: predis
       - key: MAIL_MAILER
         value: log
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: "https://ags-break-tracker-hmcu.onrender.com/auth/google/callback"
 
 databases:
   - name: ags-break-tracker-db
