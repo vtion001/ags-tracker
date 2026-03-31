@@ -374,20 +374,18 @@
             </button>
         </div>
 
-        <input type="hidden" name="break_category" id="break-category-input" value="break">
-
         <div class="break-actions">
             <form method="POST" action="{{ route('break.start') }}" id="start-15-form">
                 @csrf
                 <input type="hidden" name="type" value="15m">
                 <input type="hidden" name="break_category" id="15m-category" value="break">
-                <button type="submit" class="btn-break">15 Min</button>
+                <button type="submit" class="btn-break" onclick="document.getElementById('15m-category').value = document.querySelector('.break-type-btn.active').dataset.type">15 Min</button>
             </form>
             <form method="POST" action="{{ route('break.start') }}" id="start-60-form">
                 @csrf
                 <input type="hidden" name="type" value="60m">
                 <input type="hidden" name="break_category" id="60m-category" value="break">
-                <button type="submit" class="btn-break secondary">1 Hour</button>
+                <button type="submit" class="btn-break secondary" onclick="document.getElementById('60m-category').value = document.querySelector('.break-type-btn.active').dataset.type">1 Hour</button>
             </form>
         </div>
 
@@ -396,7 +394,6 @@
                 document.querySelectorAll('.break-type-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.type === type);
                 });
-                document.getElementById('break-category-input').value = type;
                 document.getElementById('15m-category').value = type;
                 document.getElementById('60m-category').value = type;
             }
